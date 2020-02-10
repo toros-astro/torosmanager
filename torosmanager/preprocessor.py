@@ -12,6 +12,7 @@ import xmlrpc.client
 def front_desk(work_order):
     """Front Desk will receive your Work Order and perform the requested operations.
     Make sure all your services are running."""
+    logger = logging.getLogger()
     logger.info("Work order received.")
     logger.debug("{}".format(work_order))
     for k, v in work_order.items():
