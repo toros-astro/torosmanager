@@ -1,0 +1,5 @@
+include README.md
+include templates/*.service.template
+include templates/org.toros.*.plist.template
+include makefile
+include templates/toros.conf.yaml.template

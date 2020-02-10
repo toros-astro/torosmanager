@@ -1,0 +1,10 @@
+Preprocessor Address: {
+  HTTP: "http://localhost:8000/",
+  IP: localhost,
+  Port: 8000
+}
+
+Logging: {
+  File: /etc/toros/logs/toros.log,
+  Log Level: INFO
+}

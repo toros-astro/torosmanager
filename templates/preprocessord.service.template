@@ -1,0 +1,15 @@
+# This is a template for the systemd .service file.
+# Comments will be stripped off when installed.
+[Unit]
+Description=The Preprocessor Service for TOROS
+After=network.target
+
+[Service]
+Type=simple
+User=root
+# WorkingDirectory=/home/myuser
+ExecStart=scriptname
+Restart=on-failure
+
+# [Install]
+# WantedBy=otherctmoservice
