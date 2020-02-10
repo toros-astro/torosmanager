@@ -1,7 +1,7 @@
 # Find out the operating system
 UNAME := $(shell uname)
 
-all: py_scripts preprocessor
+all: py_scripts preprocessor toros.conf.yaml
 
 ifeq ($(UNAME), Linux)
 preprocessor: preprocessord.service
@@ -55,3 +55,4 @@ uninstall_osx:
 clean:
 	-rm *.service
 	-rm *.plist
+	-rm toros.conf.yaml
