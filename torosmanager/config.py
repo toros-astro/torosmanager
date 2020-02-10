@@ -58,3 +58,8 @@ def init_logger():
         credentials=credentials,
     )
     logger.add(emailHandler, level="ERROR")
+
+
+def init_database():
+    # Connect to database
+    ...
