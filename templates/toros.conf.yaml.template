@@ -8,3 +8,7 @@ Logging: {
   File: /etc/toros/logs/toros.log,
   Log Level: INFO
 }
+
+Database: {
+  File: /etc/toros/db/db.sqlite3
+}

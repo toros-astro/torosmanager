@@ -54,5 +54,5 @@ uninstall_osx:
 
 clean:
 	-rm *.service
-	-rm *.plist
+	-rm org.toros.*.plist
 	-rm toros.conf.yaml

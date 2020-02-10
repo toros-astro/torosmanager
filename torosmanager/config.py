@@ -39,25 +39,25 @@ def init_logger():
     # format="{time} {level} {name}: {message}",
 
     # Then log this:
-    logger.info("TOROS manager started.")
-    logger.info("Logger level set to {}".format(log_level))
+    # logger.info("TOROS manager started.")
+    # logger.info("Logger level set to {}".format(log_level))
 
     # Add logger that sends email on ERRORs
-    email_conf = get_config_for_key("Email Configuration")
-    if email_conf.get("Login Required"):
-        credentials = (email_conf.get("Username"), email_conf.get("Password"))
-    else:
-        credentials = None
-    from logging.handlers import SMTPHandler
+    # email_conf = get_config_for_key("Email Configuration")
+    # if email_conf.get("Login Required"):
+    #     credentials = (email_conf.get("Username"), email_conf.get("Password"))
+    # else:
+    #     credentials = None
+    # from logging.handlers import SMTPHandler
 
-    emailHandler = SMTPHandler(
-        mailhost=(email_conf.get("SMTP Domain"), email_conf.get("SMTP Port")),
-        fromaddr=email_conf.get("Sender Address"),
-        toaddrs=get_config_for_key("Admin Emails"),
-        subject="[ERROR] lvcgcnd failure",
-        credentials=credentials,
-    )
-    logger.add(emailHandler, level="ERROR")
+    # emailHandler = SMTPHandler(
+    #     mailhost=(email_conf.get("SMTP Domain"), email_conf.get("SMTP Port")),
+    #     fromaddr=email_conf.get("Sender Address"),
+    #     toaddrs=get_config_for_key("Admin Emails"),
+    #     subject="[ERROR] lvcgcnd failure",
+    #     credentials=credentials,
+    # )
+    # logger.add(emailHandler, level="ERROR")
 
 
 def init_database():
