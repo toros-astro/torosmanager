@@ -5,7 +5,7 @@ Preprocessor Address: {
 }
 
 Logging: {
-  File: /etc/toros/logs/toros.log,
+  File: /var/toros/log/toros.log,
   Log Level: INFO
 }
 

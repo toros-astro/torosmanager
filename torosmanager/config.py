@@ -27,6 +27,7 @@ def get_config_for_key(key):
 
 def init_logger():
     import logging
+    import os
     from logging import StreamHandler
     from logging.handlers import TimedRotatingFileHandler, SMTPHandler
 
@@ -49,6 +50,10 @@ def init_logger():
     log_config = get_config_for_key("Logging") or {}
     log_file = log_config.get("File")
     if log_file is not None:
+        # Create the directory tree if needed
+        makedirs = os.path.dirname(log_file)
+        if makedirs:
+            os.makedirs(makedirs, exist_ok=True)
         log_level_str = log_config.get("Log Level") or "INFO"
         log_level = getattr(logging, log_level_str.upper())
         file_handler = TimedRotatingFileHandler(
