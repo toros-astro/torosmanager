@@ -27,37 +27,54 @@ def get_config_for_key(key):
 
 def init_logger():
     import logging
+    from logging import StreamHandler
+    from logging.handlers import TimedRotatingFileHandler, SMTPHandler
 
+    logger = logging.getLogger()
+    # Change to DEBUG because default level is WARNING
+    logger.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter(
+        "[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s"
+    )
+
+    # Create stdout handler
+    stderr_handler = StreamHandler()
+    stderr_handler.setLevel(logging.WARNING)
+    stderr_handler.setFormatter(formatter)
+    logger.addHandler(stderr_handler)
+
+    # Create a timed rotating file handler
+    # Create a new file every day at midnight and keep only the last 30 files
     log_config = get_config_for_key("Logging") or {}
     log_file = log_config.get("File")
-    if log_file is None:
-        raise ValueError("Logging file undefined.")
-    log_level = log_config.get("Log Level") or "INFO"
+    if log_file is not None:
+        log_level_str = log_config.get("Log Level") or "INFO"
+        log_level = getattr(logging, log_level_str.upper())
+        file_handler = TimedRotatingFileHandler(
+            log_file, when="midnight", interval=1, backupCount=30
+        )
+        file_handler.setLevel(log_level)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
-    # Add a file logger that rotates every 1 day
-    # and keeps files for at most 20 days
-    # format="{time} {level} {name}: {message}",
+    # Send emails for exceptions and errors
+    email_conf = get_config_for_key("Email Configuration")
+    if email_conf:
+        if email_conf.get("Login Required"):
+            credentials = (email_conf.get("Username"), email_conf.get("Password"))
+        else:
+            credentials = None
 
-    # Then log this:
-    # logger.info("TOROS manager started.")
-    # logger.info("Logger level set to {}".format(log_level))
-
-    # Add logger that sends email on ERRORs
-    # email_conf = get_config_for_key("Email Configuration")
-    # if email_conf.get("Login Required"):
-    #     credentials = (email_conf.get("Username"), email_conf.get("Password"))
-    # else:
-    #     credentials = None
-    # from logging.handlers import SMTPHandler
-
-    # emailHandler = SMTPHandler(
-    #     mailhost=(email_conf.get("SMTP Domain"), email_conf.get("SMTP Port")),
-    #     fromaddr=email_conf.get("Sender Address"),
-    #     toaddrs=get_config_for_key("Admin Emails"),
-    #     subject="[ERROR] lvcgcnd failure",
-    #     credentials=credentials,
-    # )
-    # logger.add(emailHandler, level="ERROR")
+        email_handler = SMTPHandler(
+            mailhost=(email_conf.get("SMTP Domain"), email_conf.get("SMTP Port")),
+            fromaddr=email_conf.get("Sender Address"),
+            toaddrs=get_config_for_key("Admin Emails"),
+            subject="[ERROR] lvcgcnd failure",
+            credentials=credentials,
+        )
+        email_handler.setLevel(logging.ERROR)
+        logger.add(email_handler)
 
 
 def init_database():
