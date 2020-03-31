@@ -19,7 +19,7 @@ setup(
     # author_email="toros@utrgv.edu",
     url="https://toros.utrgv.edu",
     packages=["torosmanager"],
-    install_requires=["pyyaml", "pony"],
+    install_requires=["pyyaml", "pony", "ccdproc"],
     entry_points={
         "console_scripts": ["preprocessor = torosmanager.preprocessor:serve",]
     },

@@ -60,14 +60,17 @@ def serve():
 
 
 @orm.db_session
-def load_night_build(url):
+def load_night_bundle(url):
     from . import models
     from .models import EXP_TYPE_CODES
     from datetime import datetime
     import os
     from astropy.io import fits
-    nb = models.NightBuild(datetime=datetime.now(), directory_path=url)
-    fits_files = [f for f in os.listdir(url) if ".fit" in f]
+
+    nb = models.NightBundle(
+        telescope_night_build_id=1, datetime=datetime.now(), directory_path=url
+    )
+    fits_files = [os.path.join(url, f) for f in os.listdir(url) if ".fit" in f]
 
     for afile in fits_files:
         hdulist = fits.open(afile)
@@ -75,12 +78,32 @@ def load_night_build(url):
         t = models.Exposure(
             night_build=nb,
             filename=os.path.basename(afile),
-            exposure_type=EXP_TYPE_CODES[head["IMAGETYP"]],
+            exposure_type=EXP_TYPE_CODES[head["IMAGETYP"].upper()],
             naxis=head["NAXIS"],
             naxis1=head["NAXIS1"],
             naxis2=head["NAXIS2"],
             exptime=head["EXPTIME"],
         )
+        hdulist.close()
+
+
+def init_preprocessing(url):
+    # Assume it will start from scratch
+    # This will be done for a specific `night_build_id` that uniquely identifies an observation night.
+    load_night_bundle(url)
+    make_dark_stacks()
+    make_flat_stacks()
+    make_flatdark_correction()
+
+
+def make_dark_stacks():
+    # for each group of (filter, exptime) do
+    # stack all dark exposures
+    # save fits to file
+    # add entry in database for each file (stack) generated
+    import ccdproc
+
+    master_dark = ccdproc.combine(dark_list, method="median", unit="adu")
 
 
 if __name__ == "__main__":

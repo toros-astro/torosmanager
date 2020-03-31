@@ -1,9 +1,11 @@
 import yaml as _yaml
 from . import models
 
+
 DEBUG = True
 if DEBUG:
     import os
+
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     CONFIG_PATH = "toros.conf.yaml"
     _CONFIG_IS_LOADED = True

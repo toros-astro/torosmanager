@@ -6,6 +6,7 @@ from . import models
 
 config.init_logger()
 import logging as _logging
+
 _logging.getLogger("init").info("TOROS Manager Started.")
 
 config.init_database()
