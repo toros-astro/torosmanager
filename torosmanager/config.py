@@ -1,8 +1,25 @@
 import yaml as _yaml
+from . import models
 
-CONFIG_PATH = "/etc/toros/toros.conf.yaml"
-_CONFIG_IS_LOADED = False
-_config = {}
+DEBUG = True
+if DEBUG:
+    import os
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    CONFIG_PATH = "toros.conf.yaml"
+    _CONFIG_IS_LOADED = True
+    _config = {
+        "Preprocessor Address": {
+            "HTTP": "http://localhost:8000/",
+            "IP": "localhost",
+            "Port": 8000,
+        },
+        "Logging": {"File": "log/toros.log", "Log Level": "INFO"},
+        "Database": {"File": os.path.join(BASE_DIR, "dev-db.sqlite3")},
+    }
+else:
+    CONFIG_PATH = "/etc/toros/toros.conf.yaml"
+    _CONFIG_IS_LOADED = False
+    _config = {}
 
 
 def load_config():
@@ -83,5 +100,8 @@ def init_logger():
 
 
 def init_database():
-    # Connect to database
-    ...
+    # db.bind(provider='sqlite', filename=':memory:')
+    db_path = get_config_for_key("Database").get("File")
+    # "/Users/cgwa/Academia/Research/TOROS/Code/torosmanager/dev-db.sqlite3"
+    models.db.bind(provider="sqlite", filename=db_path, create_db=True)
+    models.db.generate_mapping(create_tables=True)

@@ -7,6 +7,7 @@ Preprocessor Module
 import logging
 from . import config
 import xmlrpc.client
+from pony import orm
 
 
 def front_desk(work_order):
@@ -56,6 +57,30 @@ def serve():
     server.set_server_documentation("The Preprocessor module reduces CCD exposures.")
     server.register_function(front_desk)
     server.serve_forever()
+
+
+@orm.db_session
+def load_night_build(url):
+    from . import models
+    from .models import EXP_TYPE_CODES
+    from datetime import datetime
+    import os
+    from astropy.io import fits
+    nb = models.NightBuild(datetime=datetime.now(), directory_path=url)
+    fits_files = [f for f in os.listdir(url) if ".fit" in f]
+
+    for afile in fits_files:
+        hdulist = fits.open(afile)
+        head = hdulist[0].header
+        t = models.Exposure(
+            night_build=nb,
+            filename=os.path.basename(afile),
+            exposure_type=EXP_TYPE_CODES[head["IMAGETYP"]],
+            naxis=head["NAXIS"],
+            naxis1=head["NAXIS1"],
+            naxis2=head["NAXIS2"],
+            exptime=head["EXPTIME"],
+        )
 
 
 if __name__ == "__main__":
