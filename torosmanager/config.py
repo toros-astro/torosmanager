@@ -15,7 +15,10 @@ if DEBUG:
             "IP": "localhost",
             "Port": 8000,
         },
-        "Logging": {"File": "log/toros.log", "Log Level": "INFO"},
+        "Logging": {
+            "File": os.path.join(BASE_DIR, "log", "toros.log"),
+            "Log Level": "INFO",
+        },
         "Database": {"File": os.path.join(BASE_DIR, "dev-db.sqlite3")},
     }
 else:

@@ -8,6 +8,10 @@ import logging
 from . import config
 import xmlrpc.client
 from pony import orm
+from . import models
+from .models import EXP_TYPE_CODES
+from astropy.io import fits
+import os
 
 
 def front_desk(work_order):
@@ -61,14 +65,12 @@ def serve():
 
 @orm.db_session
 def load_night_bundle(url):
-    from . import models
-    from .models import EXP_TYPE_CODES
     from datetime import datetime
-    import os
-    from astropy.io import fits
 
     nb = models.NightBundle(
-        telescope_night_build_id=1, datetime=datetime.now(), directory_path=url
+        telescope_night_bundle_id=1,
+        datetime=datetime.now(),
+        directory_path=os.path.abspath(url),
     )
     fits_files = [os.path.join(url, f) for f in os.listdir(url) if ".fit" in f]
 
@@ -76,7 +78,7 @@ def load_night_bundle(url):
         hdulist = fits.open(afile)
         head = hdulist[0].header
         t = models.Exposure(
-            night_build=nb,
+            night_bundle=nb,
             filename=os.path.basename(afile),
             exposure_type=EXP_TYPE_CODES[head["IMAGETYP"].upper()],
             naxis=head["NAXIS"],
@@ -89,21 +91,41 @@ def load_night_bundle(url):
 
 def init_preprocessing(url):
     # Assume it will start from scratch
-    # This will be done for a specific `night_build_id` that uniquely identifies an observation night.
+    # This will be done for a specific `night_bundle_id` that uniquely identifies an observation night.
     load_night_bundle(url)
-    make_dark_stacks()
-    make_flat_stacks()
+    make_dark_master()
+    make_flat_master()
     make_flatdark_correction()
 
 
-def make_dark_stacks():
-    # for each group of (filter, exptime) do
-    # stack all dark exposures
-    # save fits to file
-    # add entry in database for each file (stack) generated
+@orm.db_session
+def make_dark_master():
+    """ for each group of (filter, exptime) do:
+    stack all dark exposures
+    save fits to file
+    add entry in database for each file (stack) generated"""
     import ccdproc
 
+    nb = models.NightBundle.get(telescope_night_bundle_id=1)
+    nb_dir = nb.directory_path
+    dark_list_q = nb.exposures.select(
+        lambda d: d.exposure_type == models.EXP_TYPE_CODES["DARK"]
+    )
+    dark_list = [os.path.join(nb_dir, f.filename) for f in dark_list_q]
+
+    # Create dark master and save to file
     master_dark = ccdproc.combine(dark_list, method="median", unit="adu")
+    dark_hdu = fits.PrimaryHDU(master_dark)
+    dark_hdu.header["IMAGETYP"] = "DARK_M"
+    dark_hdu.header["EXPTIME"] = 60.0
+    dark_hdu.writeto(os.path.join(nb_dir, "dark_master.fits"))
+
+    # Add entry to database
+    dark_comb = models.ExposureCombination(
+        filename="dark_master.fits",
+        combination_type=models.COMB_TYPE_CODES["DARKM"],
+        exposures=dark_list_q,
+    )
 
 
 if __name__ == "__main__":

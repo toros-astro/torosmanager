@@ -10,18 +10,26 @@ EXP_TYPE_CODES = {
     "BIAS": 3,
 }
 
+COMB_TYPE_CODES = {
+    "CALIB_LIGHT": 0,
+    "FLATM": 1,
+    "DARKM": 2,
+    "BIASM": 3,
+    "STACK_LIGHT": 4,
+}
+
 
 class NightBundle(db.Entity):
-    telescope_night_build_id = orm.Required(int)
+    telescope_night_bundle_id = orm.Required(int)
     datetime = orm.Required(datetime)
     directory_path = orm.Required(str)
     exposures = orm.Set("Exposure")
 
 
 class Exposure(db.Entity):
-    night_build = orm.Required(NightBundle)
+    night_bundle = orm.Required(NightBundle)
     filename = orm.Required(str)
-    exposure_type = orm.Required(int, size=8, default=EXP_TYPE_CODES["LIGHT"])
+    exposure_type = orm.Required(int, size=8)
     # observation_date = orm.Required(datetime)
     naxis = orm.Optional(int)
     naxis1 = orm.Optional(int)
@@ -31,5 +39,6 @@ class Exposure(db.Entity):
 
 
 class ExposureCombination(db.Entity):
-    combination_type = orm.Required(int, size=8, default=EXP_TYPE_CODES["DARK"])
+    filename = orm.Required(str)
+    combination_type = orm.Required(int, size=8)
     exposures = orm.Set("Exposure")
