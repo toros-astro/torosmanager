@@ -116,7 +116,7 @@ def make_dark_master():
     # Create dark master and save to file
     master_dark = ccdproc.combine(dark_list, method="median", unit="adu")
     dark_hdu = fits.PrimaryHDU(master_dark)
-    dark_hdu.header["IMAGETYP"] = "DARK_M"
+    dark_hdu.header["IMAGETYP"] = "DARKM"
     dark_hdu.header["EXPTIME"] = 60.0
     dark_hdu.writeto(os.path.join(nb_dir, "dark_master.fits"))
 
@@ -125,6 +125,36 @@ def make_dark_master():
         filename="dark_master.fits",
         combination_type=models.COMB_TYPE_CODES["DARKM"],
         exposures=dark_list_q,
+    )
+
+
+@orm.db_session
+def make_flat_master():
+    """ for each filter do:
+    stack all flat exposures
+    save fits to file
+    add entry in database for each file (stack) generated"""
+    import ccdproc
+
+    nb = models.NightBundle.get(telescope_night_bundle_id=1)
+    nb_dir = nb.directory_path
+    flat_list_q = nb.exposures.select(
+        lambda d: d.exposure_type == models.EXP_TYPE_CODES["FLAT"]
+    )
+    flat_list = [os.path.join(nb_dir, f.filename) for f in flat_list_q]
+
+    # Create dark master and save to file
+    master_flat = ccdproc.combine(flat_list, method="average", unit="adu")
+    flat_hdu = fits.PrimaryHDU(master_flat)
+    flat_hdu.header["IMAGETYP"] = "FLATM"
+    flat_hdu.header["EXPTIME"] = 60.0
+    flat_hdu.writeto(os.path.join(nb_dir, "flat_master.fits"))
+
+    # Add entry to database
+    flat_comb = models.ExposureCombination(
+        filename="flat_master.fits",
+        combination_type=models.COMB_TYPE_CODES["FLATM"],
+        exposures=flat_list_q,
     )
 
 
