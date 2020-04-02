@@ -122,6 +122,7 @@ def make_dark_master():
 
     # Add entry to database
     dark_comb = models.ExposureCombination(
+        night_bundle=nb,
         filename="dark_master.fits",
         combination_type=models.COMB_TYPE_CODES["DARKM"],
         exposures=dark_list_q,
@@ -152,10 +153,86 @@ def make_flat_master():
 
     # Add entry to database
     flat_comb = models.ExposureCombination(
+        night_bundle=nb,
         filename="flat_master.fits",
         combination_type=models.COMB_TYPE_CODES["FLATM"],
         exposures=flat_list_q,
     )
+
+
+@orm.db_session
+def make_flatdark_correction():
+    """ for each light exposure do:
+    subtract dark from light
+    divide by dark-subtracted flat
+    save fits to file
+    add entry in database for each calibrated file generated"""
+    # Eventually should be done as described in:
+    # https://ccdproc.readthedocs.io/en/latest/reduction_toolbox.html
+    # Or here:
+    # https://mwcraig.github.io/ccd-as-book
+    import ccdproc
+    from astropy.nddata import CCDData
+    import astroscrappy
+    import numpy as np
+    from astropy import units as u
+
+    nb = models.NightBundle.get(telescope_night_bundle_id=1)
+    nb_dir = nb.directory_path
+    light_list_q = nb.exposures.select(
+        lambda d: d.exposure_type == models.EXP_TYPE_CODES["LIGHT"]
+    )
+    light_list = [os.path.join(nb_dir, f.filename) for f in light_list_q]
+
+    master_dark_q = nb.combinations.select(
+        lambda d: d.combination_type == models.COMB_TYPE_CODES["DARKM"]
+    ).get()
+    master_dark_path = os.path.join(nb_dir, master_dark_q.filename)
+    master_flat_q = nb.combinations.select(
+        lambda d: d.combination_type == models.COMB_TYPE_CODES["FLATM"]
+    ).get()
+    master_flat_path = os.path.join(nb_dir, master_flat_q.filename)
+
+    for light_q, light_fname in zip(light_list_q, light_list):
+        raw_data = CCDData.read(light_fname, unit="adu")
+        master_dark = CCDData.read(master_dark_path, unit="adu")
+        master_flat = CCDData.read(master_flat_path, unit="adu")
+        # cr_cleaned = ccdproc.cosmicray_lacosmic(
+        #     raw_data,
+        #     satlevel=np.inf,
+        #     sepmed=False,
+        #     cleantype="medmask",
+        #     fsmode="median",
+        # )
+        # crmask, cr_cleaned = astroscrappy.detect_cosmics(
+        #     raw_data,
+        #     inmask=None,
+        #     satlevel=np.inf,
+        #     sepmed=False,
+        #     cleantype="medmask",
+        #     fsmode="median",
+        # )
+        # cr_cleaned.unit = "adu"
+        cr_cleaned = raw_data
+        dark_subtracted = ccdproc.subtract_dark(
+            cr_cleaned,
+            master_dark,
+            exposure_time="EXPTIME",
+            exposure_unit=u.second,
+            scale=True,
+        )
+        reduced_image = ccdproc.flat_correct(
+            dark_subtracted, master_flat, min_value=0.9
+        )
+        reduced_filename = "calib_{}".format(os.path.basename(light_fname))
+        reduced_image.write(reduced_filename, overwrite=True)
+        reduced_comb = models.ExposureCombination(
+            night_bundle=nb,
+            filename=reduced_filename,
+            combination_type=models.COMB_TYPE_CODES["CALIB_LIGHT"],
+            exposures=light_q,
+            uses_combinations=[master_flat_q, master_dark_q],
+        )
 
 
 if __name__ == "__main__":

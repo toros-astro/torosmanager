@@ -24,6 +24,7 @@ class NightBundle(db.Entity):
     datetime = orm.Required(datetime)
     directory_path = orm.Required(str)
     exposures = orm.Set("Exposure")
+    combinations = orm.Set("ExposureCombination")
 
 
 class Exposure(db.Entity):
@@ -39,6 +40,9 @@ class Exposure(db.Entity):
 
 
 class ExposureCombination(db.Entity):
+    night_bundle = orm.Optional(NightBundle)
     filename = orm.Required(str)
     combination_type = orm.Required(int, size=8)
     exposures = orm.Set("Exposure")
+    uses_combinations = orm.Set("ExposureCombination")
+    is_combined_in = orm.Set("ExposureCombination")
