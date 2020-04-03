@@ -1,8 +1,9 @@
 import yaml as _yaml
 from . import models
+import os
 
 
-DEBUG = True
+DEBUG = False
 if DEBUG:
     import os
 
@@ -49,7 +50,6 @@ def get_config_for_key(key):
 
 def init_logger():
     import logging
-    import os
     from logging import StreamHandler
     from logging.handlers import TimedRotatingFileHandler, SMTPHandler
 
@@ -107,6 +107,8 @@ def init_logger():
 def init_database():
     # db.bind(provider='sqlite', filename=':memory:')
     db_path = get_config_for_key("Database").get("File")
-    # "/Users/cgwa/Academia/Research/TOROS/Code/torosmanager/dev-db.sqlite3"
+    makedirs = os.path.dirname(db_path)
+    if makedirs:
+        os.makedirs(makedirs, exist_ok=True)
     models.db.bind(provider="sqlite", filename=db_path, create_db=True)
     models.db.generate_mapping(create_tables=True)

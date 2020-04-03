@@ -12,7 +12,3 @@ Logging: {
 Database: {
   File: /etc/toros/db/db.sqlite3
 }
-
-Raw Files: {
-  Path: /etc/toros/tmp/
-}

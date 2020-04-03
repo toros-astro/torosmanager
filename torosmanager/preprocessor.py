@@ -22,10 +22,13 @@ def front_desk(work_order):
     logger.debug("{}".format(work_order))
     for k, v in work_order.items():
         print("{}:\t{}".format(k, v))
-    wotype = work_order.get("WOType")
-    if wotype is None:
-        logger.error("Missing key: WOType.")
+    request_type = work_order.get("Request")
+    if request_type is None:
+        logger.error("Missing key: Request.")
         return
+    if request_type == "Exposure Calibration":
+        init_preprocessing(work_order)
+        logger.info("Initiating exposure calibration request.")
     return "Work order received."
 
 
@@ -89,13 +92,30 @@ def load_night_bundle(url):
         hdulist.close()
 
 
-def init_preprocessing(url):
+def init_preprocessing(work_order):
     # Assume it will start from scratch
     # This will be done for a specific `night_bundle_id` that uniquely identifies an observation night.
-    load_night_bundle(url)
-    make_dark_master()
-    make_flat_master()
-    make_flatdark_correction()
+    from urllib.parse import urlparse
+
+    logger = logging.getLogger("init_preprocessing")
+    file_url = urlparse(work_order.get("File Location"))
+    directory_path = file_url.path
+    try:
+        load_night_bundle(directory_path)
+    except:
+        logger.exception("Error loading night bundle.")
+    try:
+        make_dark_master()
+    except:
+        logger.exception("Error making dark master.")
+    try:
+        make_flat_master()
+    except:
+        logger.exception("Error making flat master.")
+    try:
+        make_flatdark_correction()
+    except:
+        logger.exception("Error doing flat-dark reduction.")
 
 
 @orm.db_session
@@ -225,7 +245,8 @@ def make_flatdark_correction():
             dark_subtracted, master_flat, min_value=0.9
         )
         reduced_filename = "calib_{}".format(os.path.basename(light_fname))
-        reduced_image.write(reduced_filename, overwrite=True)
+        reduced_path = os.path.join(nb_dir, reduced_filename)
+        reduced_image.write(reduced_path, overwrite=True)
         reduced_comb = models.ExposureCombination(
             night_bundle=nb,
             filename=reduced_filename,
