@@ -3,7 +3,7 @@ from . import models
 import os
 
 
-DEBUG = False
+DEBUG = True
 if DEBUG:
     import os
 
