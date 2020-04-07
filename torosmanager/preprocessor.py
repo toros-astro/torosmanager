@@ -138,7 +138,11 @@ def make_dark_master():
     dark_hdu = fits.PrimaryHDU(master_dark)
     dark_hdu.header["IMAGETYP"] = "DARKM"
     dark_hdu.header["EXPTIME"] = 60.0
-    dark_hdu.writeto(os.path.join(nb_dir, "dark_master.fits"))
+    file_path = os.path.join(nb_dir, "products", "dark_master.fits")
+    makedirs = os.path.dirname(file_path)
+    if makedirs:
+        os.makedirs(makedirs, exist_ok=True)
+    dark_hdu.writeto(file_path)
 
     # Add entry to database
     dark_comb = models.ExposureCombination(
@@ -169,7 +173,11 @@ def make_flat_master():
     flat_hdu = fits.PrimaryHDU(master_flat)
     flat_hdu.header["IMAGETYP"] = "FLATM"
     flat_hdu.header["EXPTIME"] = 60.0
-    flat_hdu.writeto(os.path.join(nb_dir, "flat_master.fits"))
+    file_path = os.path.join(nb_dir, "products", "flat_master.fits")
+    makedirs = os.path.dirname(file_path)
+    if makedirs:
+        os.makedirs(makedirs, exist_ok=True)
+    flat_hdu.writeto(file_path)
 
     # Add entry to database
     flat_comb = models.ExposureCombination(
@@ -207,11 +215,11 @@ def make_flatdark_correction():
     master_dark_q = nb.combinations.select(
         lambda d: d.combination_type == models.COMB_TYPE_CODES["DARKM"]
     ).get()
-    master_dark_path = os.path.join(nb_dir, master_dark_q.filename)
+    master_dark_path = os.path.join(nb_dir, "products", master_dark_q.filename)
     master_flat_q = nb.combinations.select(
         lambda d: d.combination_type == models.COMB_TYPE_CODES["FLATM"]
     ).get()
-    master_flat_path = os.path.join(nb_dir, master_flat_q.filename)
+    master_flat_path = os.path.join(nb_dir, "products", master_flat_q.filename)
 
     for light_q, light_fname in zip(light_list_q, light_list):
         raw_data = CCDData.read(light_fname, unit="adu")
@@ -245,7 +253,11 @@ def make_flatdark_correction():
             dark_subtracted, master_flat, min_value=0.9
         )
         reduced_filename = "calib_{}".format(os.path.basename(light_fname))
-        reduced_path = os.path.join(nb_dir, reduced_filename)
+        reduced_path = os.path.join(nb_dir, "products", reduced_filename)
+        makedirs = os.path.dirname(reduced_path)
+        if makedirs:
+            os.makedirs(makedirs, exist_ok=True)
+
         reduced_image.write(reduced_path, overwrite=True)
         reduced_comb = models.ExposureCombination(
             night_bundle=nb,
