@@ -69,6 +69,7 @@ def serve():
 @orm.db_session
 def load_night_bundle(url):
     from datetime import datetime
+    logger = logging.getLogger("load_night_bundle")
 
     nb = models.NightBundle(
         telescope_night_bundle_id=1,
@@ -90,6 +91,7 @@ def load_night_bundle(url):
             exptime=head["EXPTIME"],
         )
         hdulist.close()
+        logger.debug("Uploading {} to database".format(os.path.basename(afile)))
 
 
 def init_preprocessing(work_order):
@@ -101,18 +103,22 @@ def init_preprocessing(work_order):
     file_url = urlparse(work_order.get("File Location"))
     directory_path = file_url.path
     try:
+        logger.debug("Loading Night Bundle to database")
         load_night_bundle(directory_path)
     except:
         logger.exception("Error loading night bundle.")
     try:
+        logger.debug("Making Dark Master")
         make_dark_master()
     except:
         logger.exception("Error making dark master.")
     try:
+        logger.debug("Making Flat Master")
         make_flat_master()
     except:
         logger.exception("Error making flat master.")
     try:
+        logger.debug("Making Flat-Dark Correction")
         make_flatdark_correction()
     except:
         logger.exception("Error doing flat-dark reduction.")
@@ -125,6 +131,7 @@ def make_dark_master():
     save fits to file
     add entry in database for each file (stack) generated"""
     import ccdproc
+    logger = logging.getLogger("make_dark_master")
 
     nb = models.NightBundle.get(telescope_night_bundle_id=1)
     nb_dir = nb.directory_path
@@ -132,8 +139,10 @@ def make_dark_master():
         lambda d: d.exposure_type == models.EXP_TYPE_CODES["DARK"]
     )
     dark_list = [os.path.join(nb_dir, f.filename) for f in dark_list_q]
+    logger.debug("List of dark files retrieved: {}".format(dark_list))
 
     # Create dark master and save to file
+    logger.debug("Creating dark master")
     master_dark = ccdproc.combine(dark_list, method="median", unit="adu")
     dark_hdu = fits.PrimaryHDU(master_dark)
     dark_hdu.header["IMAGETYP"] = "DARKM"
@@ -145,6 +154,7 @@ def make_dark_master():
     dark_hdu.writeto(file_path)
 
     # Add entry to database
+    logger.debug("Adding dark master info to database")
     dark_comb = models.ExposureCombination(
         night_bundle=nb,
         filename="dark_master.fits",
@@ -160,6 +170,7 @@ def make_flat_master():
     save fits to file
     add entry in database for each file (stack) generated"""
     import ccdproc
+    logger = logging.getLogger("make_flat_master")
 
     nb = models.NightBundle.get(telescope_night_bundle_id=1)
     nb_dir = nb.directory_path
@@ -167,8 +178,10 @@ def make_flat_master():
         lambda d: d.exposure_type == models.EXP_TYPE_CODES["FLAT"]
     )
     flat_list = [os.path.join(nb_dir, f.filename) for f in flat_list_q]
+    logger.debug("List of flat files retrieved: {}".format(flat_list))
 
     # Create dark master and save to file
+    logger.debug("Creating flat master")
     master_flat = ccdproc.combine(flat_list, method="average", unit="adu")
     flat_hdu = fits.PrimaryHDU(master_flat)
     flat_hdu.header["IMAGETYP"] = "FLATM"
@@ -177,9 +190,11 @@ def make_flat_master():
     makedirs = os.path.dirname(file_path)
     if makedirs:
         os.makedirs(makedirs, exist_ok=True)
+    logger.debug("Writing flat master to file")
     flat_hdu.writeto(file_path)
 
     # Add entry to database
+    logger.debug("Adding flat master info to database")
     flat_comb = models.ExposureCombination(
         night_bundle=nb,
         filename="flat_master.fits",
@@ -205,6 +220,7 @@ def make_flatdark_correction():
     import numpy as np
     from astropy import units as u
 
+    logger = logging.getLogger("make_flatdark_correction")
     nb = models.NightBundle.get(telescope_night_bundle_id=1)
     nb_dir = nb.directory_path
     light_list_q = nb.exposures.select(
@@ -221,10 +237,14 @@ def make_flatdark_correction():
     ).get()
     master_flat_path = os.path.join(nb_dir, "products", master_flat_q.filename)
 
+    # Reduce every light exposure individually
+    master_dark = CCDData.read(master_dark_path, unit="adu")
+    master_flat = CCDData.read(master_flat_path, unit="adu")
+    reduced_dir = os.path.join(nb_dir, "products")
+    os.makedirs(reduced_dir, exist_ok=True)
+    logger.debug("Reducing each light frame...")
     for light_q, light_fname in zip(light_list_q, light_list):
         raw_data = CCDData.read(light_fname, unit="adu")
-        master_dark = CCDData.read(master_dark_path, unit="adu")
-        master_flat = CCDData.read(master_flat_path, unit="adu")
         # cr_cleaned = ccdproc.cosmicray_lacosmic(
         #     raw_data,
         #     satlevel=np.inf,
@@ -253,10 +273,8 @@ def make_flatdark_correction():
             dark_subtracted, master_flat, min_value=0.9
         )
         reduced_filename = "calib_{}".format(os.path.basename(light_fname))
-        reduced_path = os.path.join(nb_dir, "products", reduced_filename)
-        makedirs = os.path.dirname(reduced_path)
-        if makedirs:
-            os.makedirs(makedirs, exist_ok=True)
+        reduced_path = os.path.join(makedirs, reduced_filename)
+
 
         reduced_image.write(reduced_path, overwrite=True)
         reduced_comb = models.ExposureCombination(
